@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from saves import backup_saves, discover_save_paths, list_backups, restore_saves
+
+
+def test():
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        save = root / "saves"
+        save.mkdir()
+        file = save / "slot1.sav"
+        file.write_text("before")
+        game = {"name": "Real Game", "path": "/games/real", "save_paths": [str(save)]}
+        archive = backup_saves(game, root / "backups")
+        file.write_text("after")
+        restore_saves(game, root / "backups", archive.name)
+        assert file.read_text() == "before"
+        assert len(list_backups(game, root / "backups")) == 2
+        single = root / "single.sav"
+        single.write_text("one")
+        file_game = {"name":"File Game", "path":"/games/file", "save_paths":[str(single)]}
+        file_backup = backup_saves(file_game, root / "backups")
+        single.write_text("two")
+        restore_saves(file_game, root / "backups", file_backup.name)
+        assert single.read_text() == "one"
+        steam_save = root / ".local/share/Steam/userdata/1/42/remote"
+        steam_save.mkdir(parents=True)
+        assert discover_save_paths({"name":"Steam Game","steam_app_id":"42"}, root)[0]["path"] == str(steam_save)
+    print("save self-test: ok")
+
+
+if __name__ == "__main__":
+    test()
